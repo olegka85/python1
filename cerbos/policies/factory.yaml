@@ -1,0 +1,35 @@
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: factory
+  version: default
+  rules:
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles: [admin, planner, warehouse, purchaser, viewer]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+    - actions: ["catalog:write", "orders:write", "production:write"]
+      effect: EFFECT_ALLOW
+      roles: [admin, planner]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+    - actions: ["inventory:receive"]
+      effect: EFFECT_ALLOW
+      roles: [admin, warehouse, purchaser]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+    - actions: ["purchases:write"]
+      effect: EFFECT_ALLOW
+      roles: [admin, purchaser]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+    - actions: ["operations:read"]
+      effect: EFFECT_ALLOW
+      roles: [admin]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id

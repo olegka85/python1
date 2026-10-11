@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: garment
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-garment}
+      POSTGRES_DB: garment
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U garment -d garment"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.56.0
+    command: ["server", "--config=/config/config.yaml"]
+    volumes:
+      - ./cerbos:/config:ro
+  api:
+    build: .
+    env_file: .env
+    environment:
+      ERP_DATABASE_URL: postgresql+asyncpg://garment:${POSTGRES_PASSWORD:-garment}@db:5432/garment
+      ERP_CERBOS_URL: http://cerbos:3592
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      cerbos:
+        condition: service_started
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      ERP_DATABASE_URL: postgresql+asyncpg://garment:${POSTGRES_PASSWORD:-garment}@db:5432/garment
+    command: ["python", "-m", "garment_erp.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+  migrate:
+    build: .
+    profiles: ["setup"]
+    env_file: .env
+    environment:
+      ERP_DATABASE_URL: postgresql+asyncpg://garment:${POSTGRES_PASSWORD:-garment}@db:5432/garment
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pgdata:
